@@ -75,6 +75,8 @@ logger = cast(logging_utils.WolfLogger, logging.getLogger('dftimewolf'))
 class DFTimewolfTool(object):
   """DFTimewolf tool."""
 
+  _state: "dftw_state.DFTimewolfState" # for pytype
+
   _DEFAULT_DATA_FILES_PATH = os.path.join(
       os.sep, 'usr', 'local', 'share', 'dftimewolf')
 
@@ -85,7 +87,6 @@ class DFTimewolfTool(object):
     self._data_files_path = ''
     self._recipes_manager = recipes_manager.RecipesManager()
     self._recipe = {}  # type: Dict[str, Any]
-    self._state: "dftw_state.DFTimewolfState"
 
     self._DetermineDataFilesPath()
 
@@ -291,6 +292,20 @@ class DFTimewolfTool(object):
     """Calls the preflight's CleanUp functions."""
     self._state.CleanUpPreflights()
 
+  def PrintStats(self) -> None:
+    """Prints collected stats if existing."""
+    stat_entries = self._state.GetStats()
+    if not stat_entries:
+      logger.info('No statistics collected during execution.')
+
+    logger.info(f'{len(stat_entries)} stat entries collected during execution.')
+    for entry in stat_entries:
+      logger.debug(f'[{entry.module_name} ({entry.module_type})] {entry.stats}')
+
+  def ExportStats(self) -> None:
+    """Exports collected stats if existing. Default behavior is to log."""
+    self.PrintStats()
+
   def RecipesManager(self) -> recipes_manager.RecipesManager:
     """Returns the recipes manager."""
     return self._recipes_manager
@@ -320,6 +335,7 @@ def SetupLogging() -> None:
   # We want all DEBUG messages and above.
   # TODO(tomchop): Consider making this a parameter in the future.
   logger.setLevel(logging.DEBUG)
+  logger.propagate = False
 
   # File handler needs go be added first because it doesn't format messages
   # with color
@@ -386,6 +402,7 @@ def Main() -> bool:
     return False
 
   tool.CleanUpPreflights()
+  tool.ExportStats()
 
   return True
 
